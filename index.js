@@ -1,84 +1,58 @@
-//@ts-nocheck
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const dns = require("dns");
+const mongoose = require('mongoose');
+const ShortURL = require('./models/urls.js');
 app.use(cors({}));
 const { MongoClient } = require('mongodb');
-const client = new MongoClient(process.env.MONGO_URI, {
-  serverApi: {
-    strict: true,
-    unifiedTopology: true,
-    deprecationErrors: true
-  }
-});
-
-function run() {
-  try {
-    // connect the client to the server
-    // (optional starting in v4.7)
-    async function run() {
-
-
-      await client.connect();
-      // Send a ping to confirm a successful connection
-      client.db("admin").command({ ping: 1 });
-      console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    }
-    run().catch(console.dir);
-
-  } finally {
-    // Ensures that the client will close
-    // when you finish / error
-    client.close();
-  }
-}
-run().catch(console.dir);
-
-const db = client.db('urlshortener');
-const urls = db.collection('urls');
-// Basic Configuration
+const client = new MongoClient("mongodb+srv://alexw3071:7DaWETBCRfzvDB4R@cluster0.8vurzur.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
+app.get('/', (req, res) => {
+  res.send('Hello World! - from codedamn')
+})
+app.get('/short', (req, res) => {
+  res.send('Hello from short')
+})
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.set('view engine', 'ejs')
 
+app.get('/', (req, res) => {
+  res.render('index', { myVariable: 'My name is Alex!' })
+})
+app.post('/short', async (req, res) => {
+  const db = mongoose.connection.db;
+  const record = new ShortURL({
+    full: 'test'
+  });
+  await record.save();
+  // insert the record in 'test' collection
+  res.json({
+    ok: 1
+  })
+})
+
+// setup your mongodb connection here
+mongoose.connect('mongodb+srv://alexw3071:7DaWETBCRfzvDB4R@cluster0.8vurzur.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 app.use('/public', express.static(`${process.cwd()}/public`));
 
 app.get('/', function (req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
-const urlCount = urls.countDocuments({})
 
-// Your first API endpoint
-app.post('/api/shorturl', function (req, res) {
-  console.log(req.body);
-  const url = req.body.url;
-  const dnslookup = dns.lookup(url.parser.parse(url).hostname,
-    function (address, err) {
-      if (!address === err) {
-        res.json({ error: "Invalid URL" });
-      } else {
-        const urlDoc = {
-          url,
-          short_url: urlCount
-        }
-        const result = urls.insertOne(urlDoc);
-        console.log(result);
-        res.json({ original_url: url, short_url: urlCount });
-      }
-    });
-});
-
-app.get("/api/shorturl/:short_url", async (req, res) => {
-
-  const shorturl = req.params.short_url;
-  const urlDoc = await urls.findOne({ short_url: +shorturl })
-  res.redirect(urlDoc.url)
+app.post('/short', async (req, res) => {
+  // insert the record using the model
+  const record = new ShortURL({
+    full: 'test'
+  })
+  await record.save()
+  res.json({
+    ok: 1
+  })
 })
 
-app.listen(port, function (req, res) {
-  console.log(`Listening on port ${port}`);
+mongoose.connection.on('open', () => {
+  app.listen(port, function () {
+    console.log(`Listening on port ${port}`);
+  });
 });
