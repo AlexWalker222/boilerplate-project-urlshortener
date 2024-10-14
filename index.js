@@ -7,8 +7,6 @@ const mongoose = require('mongoose');
 const ShortURL = require('./models/url.js');
 const uri = process.env.MONGO_URI;
 
-app.use(cors())
-app.use(express.static('public'))
 
 app.set('view engine', 'ejs')
 app.use(express.urlencoded({ extended: false }))
@@ -34,21 +32,26 @@ app.post('/short', async (req, res) => {
 })
 
 app.get('/:shortid', async (req, res) => {
+  // grab the :shortid param
   const shortid = req.params.shortid
 
+  // perform the mongoose call to find the long URL
   const rec = await ShortURL.findOne({
     short: shortid
   })
-  if (!rec) {
-    return res.sendStatus(404)
-  }
+  // if null, set status to 404 (res.sendStatus(404))
+  if (!rec) return res.sendStatus(404)
+
+  // if not null, increment the click count in database
   rec.clicks++
   await rec.save()
-  res.redirect(rec.full)
 
+  // redirect the user to original link
+  res.redirect(rec.full)
 })
+
 // Setup your mongodb connection here
-mongoose.connect('mongodb://localhost/codedamn', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
 
 mongoose.connection.on('open', async () => {
   // Wait for mongodb connection before server starts
@@ -57,7 +60,7 @@ mongoose.connection.on('open', async () => {
   await ShortURL.create({ full: 'http://google.com', short: '5xr' })
   await ShortURL.create({ full: 'http://codedamn.com' })
 
-  app.listen(3000, () => {
+  app.listen(process.env.PORT, () => {
     console.log('Server started')
   })
 })
