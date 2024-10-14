@@ -9,10 +9,11 @@ app.use(express.static("models"));
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/models/url.js");
 })
+app.use(cors())
+app.use(express.json());
 const uri = process.env.MONGO_URI;
 
 
-app.set('view engine', 'ejs')
 app.use(express.urlencoded({ extended: false }))
 
 app.get('/', async (req, res) => {
