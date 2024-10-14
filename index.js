@@ -5,6 +5,10 @@ const cors = require('cors');
 const app = express();
 const mongoose = require('mongoose');
 const ShortURL = require('./models/url.js');
+app.use(express.static("models"));
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/models/url.js");
+})
 const uri = process.env.MONGO_URI;
 
 
