@@ -1,58 +1,63 @@
+// @ts-nocheck
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
 const mongoose = require('mongoose');
-const ShortURL = require('./models/urls.js');
-app.use(cors({}));
-const { MongoClient } = require('mongodb');
-const client = new MongoClient("mongodb+srv://alexw3071:7DaWETBCRfzvDB4R@cluster0.8vurzur.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
-app.get('/', (req, res) => {
-  res.send('Hello World! - from codedamn')
-})
-app.get('/short', (req, res) => {
-  res.send('Hello from short')
-})
-const port = process.env.PORT || 3000;
+const ShortURL = require('./models/url.js');
+const uri = process.env.MONGO_URI;
+
+app.use(cors())
+app.use(express.static('public'))
 
 app.set('view engine', 'ejs')
+app.use(express.urlencoded({ extended: false }))
 
-app.get('/', (req, res) => {
-  res.render('index', { myVariable: 'My name is Alex!' })
-})
-app.post('/short', async (req, res) => {
-  const db = mongoose.connection.db;
-  const record = new ShortURL({
-    full: 'test'
-  });
-  await record.save();
-  // insert the record in 'test' collection
-  res.json({
-    ok: 1
-  })
+app.get('/', async (req, res) => {
+  const allData = await ShortURL.find()
+  res.render('index', { shortUrls: allData })
 })
 
-// setup your mongodb connection here
-mongoose.connect('mongodb+srv://alexw3071:7DaWETBCRfzvDB4R@cluster0.8vurzur.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
-app.use('/public', express.static(`${process.cwd()}/public`));
-
-app.get('/', function (req, res) {
-  res.sendFile(process.cwd() + '/views/index.html');
-});
-
 app.post('/short', async (req, res) => {
-  // insert the record using the model
+  // Grab the fullUrl parameter from the req.body
+  const fullUrl = req.body.fullUrl
+  console.log('URL requested: ', fullUrl)
+
+  // insert and wait for the record to be inserted using the model
   const record = new ShortURL({
-    full: 'test'
+    full: fullUrl
   })
+
   await record.save()
-  res.json({
-    ok: 1
-  })
+
+  res.redirect('/')
 })
 
-mongoose.connection.on('open', () => {
-  app.listen(port, function () {
-    console.log(`Listening on port ${port}`);
-  });
-});
+app.get('/:shortid', async (req, res) => {
+  const shortid = req.params.shortid
+
+  const rec = await ShortURL.findOne({
+    short: shortid
+  })
+  if (!rec) {
+    return res.sendStatus(404)
+  }
+  rec.clicks++
+  await rec.save()
+  res.redirect(rec.full)
+
+})
+// Setup your mongodb connection here
+mongoose.connect('mongodb://localhost/codedamn', { useNewUrlParser: true, useUnifiedTopology: true })
+
+mongoose.connection.on('open', async () => {
+  // Wait for mongodb connection before server starts
+
+  // Just 2 URLs for testing purpose
+  await ShortURL.create({ full: 'http://google.com', short: '5xr' })
+  await ShortURL.create({ full: 'http://codedamn.com' })
+
+  app.listen(3000, () => {
+    console.log('Server started')
+  })
+})
